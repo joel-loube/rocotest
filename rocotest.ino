@@ -24,7 +24,6 @@ int face[3];              //3 faces per rotor
 int v;                    //voltage from pressure sensor
 int i;                    //counting faces
 int minimum;              //psi to drop before new face
-int firstrun = 0;         //first time through test
 
 unsigned long time;       //time for calc RPM
 unsigned long OldTime;    //OldTime for calc RPM
@@ -108,11 +107,6 @@ void RCTdisplay(void) {
 }
 
 void RCTtest(void) {
-  if (firstrun == 0){       //prints below text on bootup
-    Serial.println("PSI: 000 000 000   RPM: 000");
-    firstrun = 1;
-  }
-    
   OldTime = millis();           //record cycle begining time for RPM calculation
   
   Serial.print("PSI: ");
