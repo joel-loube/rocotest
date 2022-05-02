@@ -19,8 +19,10 @@ You certainly can, but it doenst show you the whole picture. If the compression 
 4. a 200 psi pressure transducer: https://www.amazon.ca/gp/product/B0748CVN3F/ref=ppx_yo_dt_b_asin_title_o01_s00?ie=UTF8&th=1
 5. a 1/4 to 1/8 npt adapter https://www.amazon.ca/gp/product/B0044F8YXW
 6. a 14mm long-rech spark plug non-fouler https://www.amazon.ca/gp/product/B000BYGJQY
-7. some hookup wire
-8. a soldering iron
-9. a usb cable
+7. some hookup wire (get the small stuff, nothing here needs high amperage, and its easier to fit into small spaces)
+8. at least 9 heat set inserts, M2 X D4.0 X L3.0: https://www.aliexpress.com/item/4000232858343.html?spm=a2g0o.order_detail.0.0.12c6f19ceaSixK
+9. at least 9 screws, m2 x 5mm long: https://www.aliexpress.com/item/4000282581926.html?spm=a2g0o.order_detail.0.0.12c6f19ceaSixK
+10. a soldering iron
+11. a usb cable
 
 **How do I assemble this?**
