@@ -21,8 +21,6 @@ refactored by Patrick McQuay, in the year of our lord COVID 19, 2020.
 #define SENSOR 0          //Analog input pin that sensor is connected too
 
 int face[3];              //3 faces per rotor
-int v;                    //voltage from pressure sensor
-int i;                    //counting faces
 int minimum;              //psi to drop before new face
 
 unsigned long time;       //time for calc RPM
@@ -128,29 +126,29 @@ void RCTtest(void) {
   
   Serial.print("PSI: ");
   
-  for (i = 0; i < 3; i++)         //the following code reads the sensor (in psi), looks for a peak pulse, assigns that to one of the faces, repeats the process for the next 2 faces and then moves on to the rest of the code
+  for (int i = 0; i < 3; i++)         //the following code reads the sensor (in psi), looks for a peak pulse, assigns that to one of the faces, repeats the process for the next 2 faces and then moves on to the rest of the code
   {
     face[i] = 0;
     
-    v = scaleSensorRead(analogRead(SENSOR));
+    float currentPressure = scaleSensorRead(analogRead(SENSOR));
     
-    while ((face[i] - v) <= 5) // this tests whether the current value has decayed by more than 5, if so, we are beyond the peak of the curve
+    while ((face[i] - currentPressure) <= 5) // this tests whether the current value has decayed by more than 5, if so, we are beyond the peak of the curve
     {
-      if(v > face[i]) {
-        face[i] = v;
+      if(currentPressure > face[i]) {
+        face[i] = currentPressure;
       }
       
-      v = scaleSensorRead(analogRead(SENSOR));
+      currentPressure = scaleSensorRead(analogRead(SENSOR));
     }   
     
-    minimum=v;
+    minimum = currentPressure;
     
-    while((v - minimum) < 5) //similarly to above tests if we have risen by more than 5, if so we are beyond the trough of the curve
+    while((currentPressure - minimum) < 5) //similarly to above tests if we have risen by more than 5, if so we are beyond the trough of the curve
     {
-      v = scaleSensorRead(analogRead(SENSOR));
+      currentPressure = scaleSensorRead(analogRead(SENSOR));
       
-      if (v < minimum) {
-        minimum = v;
+      if (currentPressure < minimum) {
+        minimum = currentPressure;
       }
     }
 
