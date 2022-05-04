@@ -20,12 +20,8 @@ refactored by Patrick McQuay, in the year of our lord COVID 19, 2020.
 
 #define SENSOR 0          //Analog input pin that sensor is connected too
 
-int face[3];              //3 faces per rotor
-int minimum;              //psi to drop before new face
-
-unsigned long time;       //time for calc RPM
-unsigned long OldTime;    //OldTime for calc RPM
-unsigned long RPM;        //RPM variable
+int facePressure[3];              //3 faces per rotor
+int rpm;
 
 float ambientPressure;
 
@@ -104,44 +100,44 @@ void RCTdisplay(void) {
   display.setTextColor(SSD1306_WHITE);        // Draw white text
   display.setCursor(0,0);             // Start at top-left corner
   display.print(F("RPM: "));
-  display.println(RPM); //Write RPM
+  display.println(rpm); //Write RPM
 
   display.setTextSize(2);             // Draw 2X-scale text
   display.setTextColor(SSD1306_WHITE);
   
   display.print(F("F1: "));
-  display.println(face[0]);
+  display.println(facePressure[0]);
 
   display.print(F("F2: "));
-  display.println(face[1]);
+  display.println(facePressure[1]);
 
   display.print(F("F3: "));  
-  display.println(face[2]);
+  display.println(facePressure[2]);
   
   display.display();
 }
 
 void RCTtest(void) {
-  OldTime = millis();           //record cycle begining time for RPM calculation
+  unsigned long oldTime = millis();           //record cycle begining time for RPM calculation
   
   Serial.print("PSI: ");
   
   for (int i = 0; i < 3; i++)         //the following code reads the sensor (in psi), looks for a peak pulse, assigns that to one of the faces, repeats the process for the next 2 faces and then moves on to the rest of the code
   {
-    face[i] = 0;
+    facePressure[i] = 0;
     
     float currentPressure = scaleSensorRead(analogRead(SENSOR));
     
-    while ((face[i] - currentPressure) <= 5) // this tests whether the current value has decayed by more than 5, if so, we are beyond the peak of the curve
+    while ((facePressure[i] - currentPressure) <= 5) // this tests whether the current value has decayed by more than 5, if so, we are beyond the peak of the curve
     {
-      if(currentPressure > face[i]) {
-        face[i] = currentPressure;
+      if(currentPressure > facePressure[i]) {
+        facePressure[i] = currentPressure;
       }
       
       currentPressure = scaleSensorRead(analogRead(SENSOR));
     }   
     
-    minimum = currentPressure;
+    float minimum = currentPressure;
     
     while((currentPressure - minimum) < 5) //similarly to above tests if we have risen by more than 5, if so we are beyond the trough of the curve
     {
@@ -152,14 +148,13 @@ void RCTtest(void) {
       }
     }
 
-    Serial.print(face[i]);
+    Serial.print(facePressure[i]);
     Serial.print(" ");
   }
   
-  time = millis();
-  RPM = (180000 / (time - OldTime));
+  rpm = (180000 / (millis() - oldTime));
 
   Serial.print("RPM: ");
-  Serial.print(RPM);
+  Serial.print(rpm);
   Serial.println();
 }
