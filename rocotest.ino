@@ -29,6 +29,8 @@ unsigned long time;       //time for calc RPM
 unsigned long OldTime;    //OldTime for calc RPM
 unsigned long RPM;        //RPM variable
 
+float ambientPressure;
+
 void setup() {
   Serial.begin(9600);
 
@@ -50,6 +52,12 @@ void setup() {
   Serial.println("          Firmware v0.1");
   Serial.println(""); 
 
+  for(int i = 0; i < 10; i++) {
+    ambientPressure += mapRawToAbsolutePressure(analogRead(SENSOR));
+    delay(10);
+  }
+  ambientPressure /= 10;
+
   RCTintro();
 }
 
@@ -58,8 +66,17 @@ void loop() {
   RCTdisplay(); 
 }
 
-int scaleSensorRead(int sensorValue) {
-  return max((sensorValue - 103) / 4.096, 0);
+float mapRawToAbsolutePressure(int rawValue) {
+  return mapfloat((float)(rawValue), (1024.0f * 0.5f / 5.0f), (1024.0f * 4.5f / 5.0f), 0.0f, 200.0f);
+}
+
+int scaleSensorRead(int rawValue) {
+  return mapRawToAbsolutePressure(rawValue) - ambientPressure;
+}
+
+float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
 void RCTintro(void) {
