@@ -26,3 +26,16 @@ You certainly can, but it doenst show you the whole picture. If the compression 
 11. a usb cable
 
 **How do I assemble this?**
+
+1. Print the parts
+2. heat set all of the inserts into the parts (2 in the top of the case, and 7 in the bottom)
+3. drop the arduino into the slot, and use the small tab to fix it down
+4. insert your selected sensor cable into the hole, fix it down with the clamp (if the clamp is too loose, use layers of heatshrink to enlarge it until there is a snug fit.
+5. solder the wires from the sensor to the board, power to the 5v pin, ground to the GND pin, and signal to the A0 pin
+6. remove any headers from the screen, you will not be able to fit them in
+7. solder wires from the back of the screen to the arduino, power to the 5v pin (2 wires there, annoying but doable), ground to the other GND pin, SCL to A5, SDA to A4.
+8. use the strap and 2 screws to fix the screen to the front panel. These screens are fragile so be careful. You should not need to trim anything, but it is possible.
+9. plug your usb cable in and into a computer
+10. load up arduino and load the sketch
+11. make sure you have the Adafruit_SSD1306 library and the Adafruit_GFX library in your installed arduino libraries
+12. load the firmware onto the board
