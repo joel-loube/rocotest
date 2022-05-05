@@ -24,6 +24,7 @@ You certainly can, but it doenst show you the whole picture. If the compression 
 9. at least 9 screws, m2 x 5mm long: https://www.aliexpress.com/item/4000282581926.html
 10. a soldering iron
 11. a usb cable
+12. jbweld
 
 **How do I assemble this?**
 
@@ -39,3 +40,16 @@ You certainly can, but it doenst show you the whole picture. If the compression 
 10. load up arduino and load the sketch
 11. make sure you have the Adafruit_SSD1306 library and the Adafruit_GFX library in your installed arduino libraries
 12. load the firmware onto the board
+13. jbweld the npt adapter into the spark plug non fouler
+14. teflon tape the sensor into the npt adapter
+15. put some big heatshrink or tape around the whole thing if you want some extra grip or damage resistance
+16. probably a good idea to put a rubber oring onto the non fouler, makes a better seal
+
+**How do I use this?**
+
+1. disconnect the sensor from the harness
+2. screw it into a spark plu hole
+3. plug it back in
+4. plug the tester into a usb power bank, or a pc
+5. wait until it says you can crank the engine
+6. do so
