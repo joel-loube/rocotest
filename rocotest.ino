@@ -6,6 +6,8 @@
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
+#define DEAD_SPACE_CORRECTION_FACTOR 1.04f;
+
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
@@ -65,7 +67,7 @@ float mapRawToAbsolutePressure(int rawValue) {
 }
 
 int scaleSensorRead(int rawValue) {
-  return mapRawToAbsolutePressure(rawValue) - ambientPressure;
+  return (mapRawToAbsolutePressure(rawValue) - ambientPressure) * DEAD_SPACE_CORRECTION_FACTOR;
 }
 
 float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
