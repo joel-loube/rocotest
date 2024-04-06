@@ -33,7 +33,7 @@ struct compressionRecord
 
 typedef struct compressionRecord CompressionRecord;
 
-float ambientPressure;
+float ambientPressure = 0.0f;
 
 void setup() {
   Serial.begin(9600);
