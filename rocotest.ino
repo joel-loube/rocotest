@@ -14,7 +14,7 @@
 #define BAR_TO_PSI 14.5038f
 
 #define SENSOR_PIN A0
-#define ADC_MAX_VALUE 1023.0f
+#define ADC_RESOLUTION 1024.0f
 #define SENSOR_SAMPLES 4                   // analog reads averaged per pressure sample
 #define PEAK_THRESHOLD_PSI 5.0f            // decay/rise needed to confirm a peak/trough
 #define MAX_DISPLAY_PSI 999.9f
@@ -71,7 +71,7 @@ void loop() {
 }
 
 float mapRawToGaugePressure(int rawValue) {
-  return mapfloat((float)(rawValue), (ADC_MAX_VALUE * 0.5f / 5.0f), (ADC_MAX_VALUE * 4.5f / 5.0f), 0.0f, 200.0f);
+  return mapfloat((float)(rawValue), (ADC_RESOLUTION * 0.5f / 5.0f), (ADC_RESOLUTION * 4.5f / 5.0f), 0.0f, 200.0f);
 }
 
 float scaleTo250Rpm(float pressure, int rpm) {
