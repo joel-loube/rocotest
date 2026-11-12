@@ -11,6 +11,8 @@
 #define SCALE_250_RPM_A1 -0.048f         // polynom Fit a1 to norm values to 250rpm
 #define SCALE_250_RPM_A2 0.000054f       // polynom Fit a2 to norm values to 250rpm
 
+#define BAR_TO_PSI 14.5038f
+
 #define SENSOR_PIN 0
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
@@ -70,10 +72,11 @@ float mapRawToAbsolutePressure(int rawValue) {
 }
 
 float scaleTo250Rpm(float pressure, int rpm) {
-  return pressure + (SCALE_250_RPM_A0 + (SCALE_250_RPM_A1 * rpm) + (SCALE_250_RPM_A2 * sq(rpm)));
+  float barCorrection = SCALE_250_RPM_A0 + (SCALE_250_RPM_A1 * rpm) + (SCALE_250_RPM_A2 * sq(rpm));
+  return pressure + (barCorrection * BAR_TO_PSI);
 }
 
-int scaleSensorRead(int rawValue) {
+float scaleSensorRead(int rawValue) {
   return (mapRawToAbsolutePressure(rawValue) - ambientPressure) * DEAD_SPACE_CORRECTION_FACTOR;
 }
 
