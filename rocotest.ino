@@ -19,6 +19,14 @@
 #define PEAK_THRESHOLD_PSI 5.0f            // decay/rise needed to confirm a peak/trough
 #define MAX_DISPLAY_PSI 999.9f
 
+// Cranking & stability bounds
+#define MIN_VALID_RPM 120
+#define MAX_VALID_RPM 500
+#define PULSE_TIMEOUT_MS 1000UL
+#define RPM_STABILITY_TOLERANCE 15         // max RPM spread across 3 cycles
+#define PSI_STABILITY_TOLERANCE 5.0f       // max PSI spread per face across 3 cycles
+#define HOLD_QUIET_MS 1500UL               // pulse-free time required to release a held result
+
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
@@ -40,21 +48,22 @@ struct compressionRecord
 typedef struct compressionRecord CompressionRecord;
 
 float ambientPressure = 0.0f;
+CompressionRecord history[3];
+int validStreak = 0;
+int shownProgress = -1;  // cycle count currently drawn by displayProgress; -1 = not drawn
 
 void setup() {
-  Serial.begin(19200);      //serial speed
+  Serial.begin(19200);
 
-  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
+    for(;;);
   }
 
-  // Clear the buffer
   display.clearDisplay();
   display.display();
 
-  delay(500);               //hang out for half a second
+  delay(500);
   
   for(int i = 0; i < 10; i++) {
     ambientPressure += mapRawToGaugePressure(analogRead(SENSOR_PIN));
@@ -63,11 +72,54 @@ void setup() {
   ambientPressure /= 10;
 
   displayIntro();
+  displayProgress(0);
 }
 
 void loop() {
-  CompressionRecord rec = performTest(); 
-  displayResults(rec); 
+  CompressionRecord rec;
+
+  if (!performTest(rec)) {
+    // Cranking stopped or RPM was out of bounds; reset streak
+    validStreak = 0;
+    displayProgress(validStreak);
+    return;
+  }
+
+  // Shift new valid cycle into the 3-cycle rolling buffer
+  history[0] = history[1];
+  history[1] = history[2];
+  history[2] = rec;
+
+  if (validStreak < 3) {
+    validStreak++;
+  }
+  displayProgress(validStreak);
+
+  // Latch once 3 consecutive cycles agree within tolerance
+  if (validStreak == 3 && isStableThreeCycles(history)) {
+    displayResults(history[2]);
+    validStreak = 0;
+
+    // Hold result until cranking stops: no pressure swing larger than PEAK_THRESHOLD_PSI
+    // for HOLD_QUIET_MS. Watching the swing rather than the absolute level means a
+    // zeroing error or sensor drift can't leave us stuck here.
+    unsigned long quietStart = millis();
+    float lo = readPressure();
+    float hi = lo;
+    while (millis() - quietStart < HOLD_QUIET_MS) {
+      float p = readPressure();
+      lo = min(lo, p);
+      hi = max(hi, p);
+      if ((hi - lo) > PEAK_THRESHOLD_PSI) {
+        // Still pulsing; restart the quiet window
+        quietStart = millis();
+        lo = hi = p;
+      }
+    }
+
+    // Empty markers back on screen = ready for another run
+    displayProgress(0);
+  }
 }
 
 float mapRawToGaugePressure(int rawValue) {
@@ -75,7 +127,7 @@ float mapRawToGaugePressure(int rawValue) {
 }
 
 float scaleTo250Rpm(float pressure, int rpm) {
-  // Polynomial offset is in bar; multiply by 14.5038 to convert to PSI
+  rpm = constrain(rpm, MIN_VALID_RPM, MAX_VALID_RPM);
   float barCorrection = SCALE_250_RPM_A0 + (SCALE_250_RPM_A1 * rpm) + (SCALE_250_RPM_A2 * sq((float)rpm));
   return pressure + (barCorrection * BAR_TO_PSI);
 }
@@ -92,68 +144,61 @@ float readPressure(void) {
   return sum / SENSOR_SAMPLES;
 }
 
-// Blocks until the pressure has bottomed out and risen PEAK_THRESHOLD_PSI above the minimum.
-void waitForTrough(void) {
+bool waitForTrough(unsigned long timeoutMs) {
   float currentPressure = readPressure();
   float minimum = currentPressure;
+  unsigned long startTime = millis();
 
-  while ((currentPressure - minimum) < PEAK_THRESHOLD_PSI)
-  {
+  while ((currentPressure - minimum) < PEAK_THRESHOLD_PSI) {
+    if (millis() - startTime > timeoutMs) {
+      return false;
+    }
     currentPressure = readPressure();
-
     if (currentPressure < minimum) {
       minimum = currentPressure;
     }
   }
+  return true;
 }
 
-float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
-{
+float mapfloat(float x, float in_min, float in_max, float out_min, float out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
 void displayIntro(void) {
   display.clearDisplay();
-
   display.invertDisplay(true);
 
   display.setTextSize(2);             
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0,0);
   display.println(" Welcome!");
-
   display.println("  ROTARY");
   display.println("  COMP.");
   display.println("  TESTER");
-  
   display.display();
 
   delay(2000);
   
   display.invertDisplay(false);
   display.clearDisplay();
-  
   display.setCursor(0,0);
   display.println(" Waiting.");
   display.println("  CRANK");
   display.println("  ENGINE");
   display.println("  NOW");
-
   display.display();
 }
 
 void displayResults(CompressionRecord rec) {
   display.clearDisplay();
 
-  display.setTextSize(2);             // Draw 2X-scale text
-  display.setTextColor(SSD1306_WHITE);        // Draw white text
-  display.setCursor(0,0);             // Start at top-left corner
-  display.print(F("RPM: "));
-  display.println(min(9999, rec.rpm)); //Write RPM
-
-  display.setTextSize(2);             // Draw 2X-scale text
+  display.setTextSize(2);
   display.setTextColor(SSD1306_WHITE);
-  
+  display.setCursor(0,0);
+  display.print(F("RPM: "));
+  display.println(min(9999, rec.rpm));
+
   display.print(F("F1: "));
   display.println(min(MAX_DISPLAY_PSI, rec.facePressures[0]), 1);
 
@@ -162,45 +207,95 @@ void displayResults(CompressionRecord rec) {
 
   display.print(F("F3: "));  
   display.println(min(MAX_DISPLAY_PSI, rec.facePressures[2]), 1);
-  
+
   display.display();
+  shownProgress = -1;  // screen was cleared, so the progress markers are gone
 }
 
-CompressionRecord performTest(void) {
-  CompressionRecord rec;
+// Three small circles in the top-right corner, one per valid cycle collected.
+// Empty circles mean ready and waiting for cranking; they fill in as consecutive
+// valid cycles come in. Hidden while a result is held (until cranking stops).
+// Only redraws when the count changes, to keep I2C traffic out of the sampling loop.
+void displayProgress(int filled) {
+  if (filled == shownProgress) {
+    return;
+  }
+
+  // Clear the corner (right of the widest top-line text on any screen)
+  display.fillRect(SCREEN_WIDTH - 20, 0, 20, 16, SSD1306_BLACK);
+
+  for (int i = 0; i < 3; i++) {
+    int x = SCREEN_WIDTH - 17 + (i * 7);
+    if (i < filled) {
+      display.fillCircle(x, 7, 2, SSD1306_WHITE);
+    } else {
+      display.drawCircle(x, 7, 2, SSD1306_WHITE);
+    }
+  }
+
+  display.display();
+  shownProgress = filled;
+}
+
+bool performTest(CompressionRecord &rec) {
   unsigned long peakTimes[3];
 
-  waitForTrough();                    //skip any pulse already in progress so the first face is a full peak
+  if (!waitForTrough(PULSE_TIMEOUT_MS)) return false;
 
-  for (int i = 0; i < 3; i++)         //the following code reads the sensor (in psi), looks for a peak pulse, assigns that to one of the faces, repeats the process for the next 2 faces and then moves on to the rest of the code
-  {
-    rec.facePressures[i] = 0;
-    
+  for (int i = 0; i < 3; i++) {
+    rec.facePressures[i] = 0.0f;
     float currentPressure = readPressure();
-    
-    while ((rec.facePressures[i] - currentPressure) <= PEAK_THRESHOLD_PSI) // this tests whether the current value has decayed by more than the threshold, if so, we are beyond the peak of the curve
-    {
-      if(currentPressure > rec.facePressures[i]) {
+    unsigned long startTime = millis();
+
+    while ((rec.facePressures[i] - currentPressure) <= PEAK_THRESHOLD_PSI) {
+      if (millis() - startTime > PULSE_TIMEOUT_MS) {
+        return false; // Cranking stopped mid-pulse
+      }
+      if (currentPressure > rec.facePressures[i]) {
         rec.facePressures[i] = currentPressure;
       }
-      
       currentPressure = readPressure();
     }
 
-    peakTimes[i] = millis();          //peaks are detected at the same point in each pulse, so the spacing between them is accurate
-    
+    peakTimes[i] = millis();
+
     if (i < 2) {
-      waitForTrough();                //similarly to above, wait until we are beyond the trough of the curve
+      if (!waitForTrough(PULSE_TIMEOUT_MS)) return false;
     }
   }
-  
-  //one peak per crank revolution, so the first and third peaks are two revolutions apart
+
   unsigned long elapsed = peakTimes[2] - peakTimes[0];
   rec.rpm = (elapsed > 0) ? (int)(120000UL / elapsed) : 0;
+
+  if (rec.rpm < MIN_VALID_RPM || rec.rpm > MAX_VALID_RPM) {
+    return false;
+  }
 
   for (int i = 0; i < 3; i++) {
     rec.facePressures[i] = scaleTo250Rpm(rec.facePressures[i], rec.rpm);
   }
-  
-  return rec;
+
+  return true;
+}
+
+bool isStableThreeCycles(CompressionRecord h[3]) {
+  int minRpm = min(h[0].rpm, min(h[1].rpm, h[2].rpm));
+  int maxRpm = max(h[0].rpm, max(h[1].rpm, h[2].rpm));
+
+  if ((maxRpm - minRpm) > RPM_STABILITY_TOLERANCE) {
+    return false;
+  }
+
+  for (int face = 0; face < 3; face++) {
+    float minP = min(h[0].facePressures[face],
+                     min(h[1].facePressures[face], h[2].facePressures[face]));
+    float maxP = max(h[0].facePressures[face],
+                     max(h[1].facePressures[face], h[2].facePressures[face]));
+
+    if ((maxP - minP) > PSI_STABILITY_TOLERANCE) {
+      return false;
+    }
+  }
+
+  return true;
 }
